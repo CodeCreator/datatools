@@ -15,10 +15,10 @@ Clone this repo and install via `pip install -e .`
 
 *datatools* comes with the following default script:
 
-* `dump`
-* `merge`
-* `pack`
-* `splits`
-* `tokenize`
+* `tokenize`: tokenize datasets per document
+* `pack`: pack tokenized documents into fixed sequences
+* `dump`: print datasets as json to stdout
+* `splits`: make random splits, e.g., train/test/validation
+* `merge`: merge mosaic streaming datasets in subfolders to a big dataset
 
 
