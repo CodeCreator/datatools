@@ -25,10 +25,10 @@ class PackOptions:
     max_length: int = field(alias=["-l"], default=8192)
     min_length: int = field(alias=["-s"], default=1)
 
-    # Pack sequences of different lengths into separate subset of fixed lengths
-    # will always pack to the longest available lengths
-    # This still requires setting max_length
-    fixed_lengths: List[int] = field(alias=["-f"], default=None)
+    # Pack sequences into separate subset of fixed lengths
+    # This will always pack to the longest available lengths,
+    # Note that it still requires setting max_length
+    split_by_lengths: List[int] = field(alias=["-f"], default=None)
 
     # Only include a single sequence per document
     single: bool = False
@@ -143,8 +143,8 @@ def pack_fn(dataset: Subset,
     if options.sort_by_length:
         indices.sort(key=lambda x: len(dataset[x]['input_ids']), reverse=True)
 
-    if options.fixed_lengths:
-        sorted_fixed_lengths = sorted(options.fixed_lengths, reverse=True)
+    if options.split_by_lengths:
+        sorted_lengths = sorted(options.split_by_lengths, reverse=True)
 
     for i in tqdm(indices, disable=process_id != 0):
         item = dataset[i]
@@ -163,11 +163,11 @@ def pack_fn(dataset: Subset,
         if options.add_boseos:
             input_ids = add_sentinels(input_ids, options.bos_id, options.eos_id)
 
-        if options.fixed_lengths:
-            while len(input_ids) >= sorted_fixed_lengths[-1]:
+        if options.split_by_lengths:
+            while len(input_ids) >= sorted_lengths[-1]:
                 # From longest to shortest
                 target_len = next(target_len
-                                  for target_len in sorted_fixed_lengths
+                                  for target_len in sorted_lengths
                                   if len(input_ids) >= target_len)
 
                 target_subset = subset / f"{target_len}-{options.max_length}"
