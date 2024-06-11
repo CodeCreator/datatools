@@ -126,6 +126,7 @@ def process(dataset: Sequence,
     indices = range(len(dataset))
 
     if options.overwrite and output_path.exists():
+        assert options.num_jobs is None or options.num_jobs == 1, "overwrite is incompatible with multiple jobs"
         shutil.rmtree(output_path)
         logger.warning(f"Removed existing output directory: {output_path}")
 
