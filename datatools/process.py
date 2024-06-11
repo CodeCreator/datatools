@@ -1,6 +1,6 @@
 import os
 
-from typing import Optional, Tuple, Dict, Any, Callable
+from typing import Optional, Tuple, Dict, Any, Callable, Union
 from collections.abc import Sequence, Iterator
 from copy import copy
 import shutil
@@ -89,6 +89,11 @@ def infer_columns(item):
     return columns
 
 
+def identity_fn(dataset, *_):
+    for i in range(len(dataset)):
+        yield Path(), dataset[i]
+
+
 def write_process_(args):
     dataset, indices, process_fn, output_path, options, process_id = args
 
@@ -100,6 +105,8 @@ def write_process_(args):
 
     try:
         for subset, item in process_fn(dataset, indices, process_id):
+            subset = Path(subset if subset is not None else "")
+
             if subset not in writers:
                 if options.columns is None:
                     columns = infer_columns(item)
@@ -119,9 +126,11 @@ def write_process_(args):
 
 def process(dataset: Sequence,
             process_fn: Callable[[Subset, Subset, int], Iterator[Tuple[Path, Dict[str, Any]]]],
-            output_path: Path,
+            output_path: Union[Path, str],
             options: Optional[ProcessOptions] = None):
     options = copy(options)
+
+    output_path = Path(output_path)
 
     indices = range(len(dataset))
 
