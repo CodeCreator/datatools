@@ -23,10 +23,9 @@ class Subset(Array):
     @classmethod
     def shard(cls, dataset: Array, shard_id: int, num_shards: int):
         N = len(dataset)
-        shard_size = N // num_shards
-        start = shard_id * shard_size
-        end = min((shard_id + 1) * shard_size, N)
-        return cls(dataset, range(start, end))
+        shard_indices = np.linspace(0, N, num_shards + 1)
+
+        return cls(dataset, range(int(shard_indices[shard_id]), int(shard_indices[shard_id + 1])))
 
     def __len__(self) -> int:
         return len(self.indices)
