@@ -17,8 +17,9 @@ Clone this repo and install via `pip install -e .`
 
 * `tokenize`: tokenize datasets per document
 * `pack`: pack tokenized documents into fixed sequences
-* `dump`: print datasets as json to stdout
+* `peek`: print datasets as json to stdout
 * `splits`: make random splits, e.g., train/test/validation
-* `merge`: merge mosaic streaming datasets in subfolders to a big dataset
+* `merge_data`: merge datasets of same length with different features
+* `merge_index`: merge mosaic streaming datasets in subfolders to a big dataset
 
 

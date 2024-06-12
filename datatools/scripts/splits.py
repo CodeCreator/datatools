@@ -11,11 +11,11 @@ from simple_parsing import ArgumentParser
 
 from datatools.load import load, LoadOptions
 from datatools.process import process, ProcessOptions
-from datatools.utils import Subset
+from streaming.base.array import Array
 
 
-def split_fn(subset: Subset,
-             indices: Subset,
+def split_fn(data: Array,
+             indices: Array,
              process_id: int,
              partitions: Dict[str, int],
              seed: int):
@@ -26,8 +26,8 @@ def split_fn(subset: Subset,
     np.random.seed(seed)
     np.random.shuffle(partition_id)
 
-    for i in tqdm(range(len(subset)), disable=process_id!=0):
-        yield partition_names[partition_id[indices[i]]], subset[i]
+    for i in tqdm(range(len(data)), disable=process_id!=0):
+        yield partition_names[partition_id[indices[i]]], data[i]
 
 
 def main():

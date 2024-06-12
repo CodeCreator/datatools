@@ -15,8 +15,9 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'dump=datatools.scripts.dump:main',
-            'merge=datatools.scripts.merge:main',
+            'peek=datatools.scripts.peek:main',
+            'merge_index=datatools.scripts.merge_index:main',
+            'merge_data=datatools.scripts.merge_data:main',
             'pack=datatools.scripts.pack:main',
             'splits=datatools.scripts.splits:main',
             'tokenize=datatools.scripts.tokenize:main',

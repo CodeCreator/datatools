@@ -15,7 +15,7 @@ from collections import defaultdict
 
 from datatools.load import load, LoadOptions
 from datatools.process import process, ProcessOptions
-from datatools.utils import Subset
+from streaming.base.array import Array
 
 
 @dataclass
@@ -132,22 +132,22 @@ class BFDBuffer:
             yield from buffer.process(tokens)
 
 
-def pack_fn(dataset: Subset,
-            indices: Subset,
+def pack_fn(data: Array,
+            indices: Array,
             process_id: int,
             options: PackOptions):
     buffer_cls = BFDBuffer if options.bfd else SingleBuffer
     buffers = defaultdict(partial(buffer_cls, options=options))
 
-    indices = list(range(len(dataset)))
+    indices = list(range(len(data)))
     if options.sort_by_length:
-        indices.sort(key=lambda x: len(dataset[x]['input_ids']), reverse=True)
+        indices.sort(key=lambda x: len(data[x]['input_ids']), reverse=True)
 
     if options.split_by_lengths:
         sorted_lengths = sorted(options.split_by_lengths, reverse=True)
 
     for i in tqdm(indices, disable=process_id != 0):
-        item = dataset[i]
+        item = data[i]
 
         # Then identify the mapped subset
         subset = Path()

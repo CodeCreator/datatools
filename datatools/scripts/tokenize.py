@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 from datatools.load import load, LoadOptions
 from datatools.process import process, ProcessOptions
-from datatools.utils import Subset
+from streaming.base.array import Array
 
 
 @dataclass
@@ -49,15 +49,15 @@ def load_tokenizer_encoder(options: TokenizeOptions):
         return partial(tokenizer.encode, add_special_tokens=False)
 
 
-def tokenize_fn(subset: Subset,
-                indices: Subset,
+def tokenize_fn(data: Array,
+                indices: Array,
                 process_id: int,
                 options: TokenizeOptions):
 
     encode_fn = load_tokenizer_encoder(options)
 
-    for i in tqdm(range(len(subset)), disable=(process_id != 0)):
-        item = subset[i]
+    for i in tqdm(range(len(data)), disable=(process_id != 0)):
+        item = data[i]
         tokens = encode_fn(item[options.text_field][:options.truncate_bytes])
         domain = item[options.domain_by] if options.domain_by is not None else options.domain
 
