@@ -168,3 +168,7 @@ init
 
 
 wandb
+
+
+# Utils for creating math datasets
+math_utils/
