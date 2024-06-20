@@ -64,7 +64,7 @@ def subset_output_path(output_path: Path, subset: str, process_id: int, options:
     if options.job_id is not None and options.num_jobs is not None:
         num_jobs = str(options.num_jobs)
         parts.append(f"job{options.job_id:0{len(num_jobs)}}-{num_jobs}")
-    elif options.num_proc is not None:
+    if options.num_proc is not None:
         num_proc = str(options.num_proc)
         parts.append(f"proc{process_id:0{len(num_proc)}}-{num_proc}")
 
