@@ -85,7 +85,7 @@ def infer_columns(item):
         elif isinstance(value, float):
             columns[key] = "float"
         else:
-            raise ValueError(f"Unknown type for column {key}: {type(value)}")
+            columns[key] = "pkl"
     return columns
 
 
