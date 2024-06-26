@@ -48,8 +48,9 @@ def load(*input_paths: List[Union[Path, str]], options: Optional[LoadOptions] = 
             input_type = "mosaic"
         elif path.is_dir() and (path / "state.json").is_file():
             input_type = "hf"
-        elif path.is_file() and path.suffix[1:] in {"jsonl", "arrow", "parquet"}:
-            input_type = path.suffix[1:]
+        for suffix in [".jsonl", ".arrow", ".parquet"]:
+            if path.is_file() and suffix in path.suffixes:
+                input_type = suffix[1:]
 
     if input_type == "mosaic":
         return LocalDatasets(input_paths)

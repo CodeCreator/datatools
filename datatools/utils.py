@@ -1,6 +1,7 @@
 import json
 import os
-import logging
+import io
+
 from typing import Any, Dict, Union, List
 from collections.abc import Sequence
 from pathlib import Path
@@ -70,10 +71,18 @@ class JsonlDataset(Array):
     def __init__(self, paths: List[Union[str, Path]]):
         self.paths = paths
 
-        lines = []
+        self.lines = []
         for path in paths:
-            with Path(path).open() as f:
-                lines.extend(f.readlines())
+            path = Path(path)
+            if path.suffixes[-1] in [".zstd", ".zst"]:
+                with Path(path).open("rb") as f:
+                    import zstandard
+                    decompressor = zstandard.ZstdDecompressor(max_window_size=2147483648)
+                    stream_reader = decompressor.stream_reader(f)
+                    self.lines.extend(io.TextIOWrapper(stream_reader, encoding='utf-8').readlines())
+            else:
+                with Path(path).open() as f:
+                    self.lines.extend(f.readlines())
 
     def __len__(self) -> int:
         return len(self.lines)
@@ -82,7 +91,7 @@ class JsonlDataset(Array):
     def size(self) -> int:
         return len(self.lines)
 
-    def __getitem__(self, idx: int) -> Dict[str, Any]:
+    def get_item(self, idx: int) -> Dict[str, Any]:
         return json.loads(self.lines[idx])
 
 
