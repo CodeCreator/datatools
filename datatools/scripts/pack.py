@@ -24,11 +24,13 @@ class PackOptions:
 
     max_length: int = field(alias=["-l"], default=8192)
     min_length: int = field(alias=["-s"], default=1)
+    overlap: int = field(alias=["-o"], default=0)
 
     # Pack sequences into separate subset of fixed lengths
     # This will always pack to the longest available lengths,
     # Note that it still requires setting max_length
     split_by_lengths: List[int] = field(alias=["-f"], default=None)
+
 
     # Only include a single sequence per document
     single: bool = False
@@ -90,7 +92,7 @@ class SingleBuffer:
             self.token_buffer = []
             self.num_tokens = 0
             if not self.options.single:
-                tokens = tokens[self.max_length:]
+                tokens = tokens[self.max_length - self.options.overlap:]
                 if self.options.add_boseos:
                     tokens = add_sentinels(tokens, self.options.bos_id)
 
@@ -180,7 +182,7 @@ def pack_fn(data: Array,
                 if options.single:
                     break
 
-                input_ids = input_ids[target_len:]
+                input_ids = input_ids[target_len - options.overlap:]
                 if options.add_boseos:
                     input_ids = add_sentinels(input_ids, options.bos_id)
         else:
