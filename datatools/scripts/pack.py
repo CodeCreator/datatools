@@ -37,10 +37,13 @@ class PackOptions:
 
     bfd: bool = False
     bfd_num_bins: int = 50
-
+    
     add_boseos: bool = True
-    bos_id: int = 128000 # Llama-2: 1
-    eos_id: int = 128001 # Llama-2: 2
+    bos_id: Optional[int] = None
+    eos_id: Optional[int] = None
+    # Use preset tokenizer config to set bos_id and eos_id
+    tokenizer: str = field(alias=["-T"], default="llama3") 
+
 
     sort_by_length: bool = False
 
@@ -50,7 +53,25 @@ class PackOptions:
     length_field: str = "length"
     indices_field: str = "indices"
     domain_field: str = "domain"
-
+    
+    def __post_init__(self):
+        if self.bos_id is None:
+            if self.tokenizer == "llama3":
+                self.bos_id = 128000
+            elif self.tokenizer == "llama2":
+                self.bos_id = 1
+            else:
+                from transformers import AutoTokenizer
+                self.bos_id = AutoTokenizer.from_pretrained(self.tokenizer).bos_id
+        if self.eos_id is None:
+            if self.tokenizer == "llama3":
+                self.eos_id = 128001
+            elif self.tokenizer == "llama2":
+                self.eos_id = 2
+            else:
+                from transformers import AutoTokenizer
+                self.eos_id = AutoTokenizer.from_pretrained(self.tokenizer).eos_id
+    
 
 def add_sentinels(tokens: NDArray[np.uint32], bos_id: int, eos_id: Optional[int] = None):
     tokens_list = []
@@ -208,7 +229,7 @@ def main():
     dataset = load(*args.inputs, options=args.load_options)
     N = len(dataset)
     print(f"Loaded dataset with {N} samples")
-
+    
     process(dataset,
             partial(pack_fn, options=args.pack_options),
             args.output,
