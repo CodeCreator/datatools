@@ -78,9 +78,9 @@ def main():
     parser.add_argument("inputs", type=Path, nargs="+", help="Input dataset paths")
     parser.add_argument("output", type=Path, help="Output dataset path")
 
+    parser.add_arguments(TokenizeOptions, dest="tokenize_options")
     parser.add_arguments(LoadOptions, dest="load_options")
     parser.add_arguments(ProcessOptions, dest="process_options")
-    parser.add_arguments(TokenizeOptions, dest="tokenize_options")
 
     args = parser.parse_args()
 

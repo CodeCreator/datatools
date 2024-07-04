@@ -37,12 +37,12 @@ class PackOptions:
 
     bfd: bool = False
     bfd_num_bins: int = 50
-    
+
     add_boseos: bool = True
     bos_id: Optional[int] = None
     eos_id: Optional[int] = None
     # Use preset tokenizer config to set bos_id and eos_id
-    tokenizer: str = field(alias=["-T"], default="llama3") 
+    tokenizer: str = field(alias=["-T"], default="llama3")
 
 
     sort_by_length: bool = False
@@ -53,7 +53,7 @@ class PackOptions:
     length_field: str = "length"
     indices_field: str = "indices"
     domain_field: str = "domain"
-    
+
     def __post_init__(self):
         if self.bos_id is None:
             if self.tokenizer == "llama3":
@@ -71,7 +71,7 @@ class PackOptions:
             else:
                 from transformers import AutoTokenizer
                 self.eos_id = AutoTokenizer.from_pretrained(self.tokenizer).eos_id
-    
+
 
 def add_sentinels(tokens: NDArray[np.uint32], bos_id: int, eos_id: Optional[int] = None):
     tokens_list = []
@@ -219,9 +219,9 @@ def main():
     parser.add_argument("inputs", type=Path, nargs="+", help="Input dataset paths")
     parser.add_argument("output", type=Path, help="Output dataset path")
 
+    parser.add_arguments(PackOptions, dest="pack_options")
     parser.add_arguments(LoadOptions, dest="load_options")
     parser.add_arguments(ProcessOptions, dest="process_options")
-    parser.add_arguments(PackOptions, dest="pack_options")
 
     args = parser.parse_args()
 
@@ -229,7 +229,7 @@ def main():
     dataset = load(*args.inputs, options=args.load_options)
     N = len(dataset)
     print(f"Loaded dataset with {N} samples")
-    
+
     process(dataset,
             partial(pack_fn, options=args.pack_options),
             args.output,
