@@ -30,7 +30,10 @@ class ProcessOptions:
     num_proc: Optional[int] = field(alias=["-w", "--num_workers"], default=None)
 
     # Range of rows to process
-    row_range: Optional[Tuple[int, int]] = None
+    index_range: Optional[Tuple[int, int]] = None
+    index_path: Optional[Path] = None
+    indices: Optional[np.ndarray] = field(cmd=False, default=None)
+    sort_index: bool = False
 
     job_id: Optional[int] = None    # Job id
     num_jobs: Optional[int] = None  # Number of jobs
@@ -124,6 +127,30 @@ def write_process_(args):
             writer.finish()
 
 
+def load_indices(options):
+    indices = None
+    if options.indices is not None:
+        assert options.index_path is None, "Cannot specify both indices and index_path"
+        assert options.index_range is None, "Cannot specify both indices and index_range"
+
+        indices = options.indices
+
+    if options.index_path is not None:
+        assert options.index_range is None, "Cannot specify both index_path and index_range"
+
+        indices = np.load(options.index_path)
+        logger.warning(f"Loaded {len(indices)} indices from {options.index_path}")
+
+    if indices is not None and options.sort_index:
+        indices = np.sort(indices)
+
+    if options.index_range is not None:
+        logger.warning(f"Using indices from {options.index_range[0]} to {options.index_range[1]}")
+        indices = range(*options.index_range)
+
+    return indices
+
+
 def process(dataset: Sequence,
             process_fn: Callable[[Subset, Subset, int], Iterator[Tuple[Path, Dict[str, Any]]]],
             output_path: Union[Path, str],
@@ -132,16 +159,17 @@ def process(dataset: Sequence,
 
     output_path = Path(output_path)
 
-    indices = range(len(dataset))
-
     if options.overwrite and output_path.exists():
         assert options.num_jobs is None or options.num_jobs == 1, "overwrite is incompatible with multiple jobs"
         shutil.rmtree(output_path)
         logger.warning(f"Removed existing output directory: {output_path}")
 
-    if options.row_range is not None:
-        dataset = Subset(dataset, range(*options.row_range))
-        indices = Subset(indices, range(*options.row_range))
+    indices = load_indices(options)
+    if indices is not None:
+        dataset = Subset(dataset, indices)
+        logger.warning(f"Selected {len(dataset)} indices")
+    else:
+        indices = range(len(dataset))
 
     if options.job_id is not None and options.num_jobs is not None:
         if len(dataset) < options.num_jobs:
