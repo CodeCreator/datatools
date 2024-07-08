@@ -36,7 +36,7 @@ class Subset(Array):
         return len(self.indices)
 
     def __getitem__(self, idx: int) -> Dict[str, Any]:
-        return self.dataset[self.indices[idx]]
+        return self.dataset[int(self.indices[int(idx)])]
 
 
 class LocalDatasets(Array):

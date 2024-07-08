@@ -107,8 +107,14 @@ def write_process_(args):
     writers = {}
 
     try:
-        for subset, item in process_fn(dataset, indices, process_id):
-            subset = Path(subset if subset is not None else "")
+        for result in process_fn(dataset, indices, process_id):
+            if isinstance(result, tuple):
+                subset, item = result
+                subset = Path(subset if subset is not None else "")
+            else:
+                item = result
+                subset = Path("")
+
 
             if subset not in writers:
                 if options.columns is None:
