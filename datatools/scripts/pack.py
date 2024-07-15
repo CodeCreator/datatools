@@ -38,11 +38,14 @@ class PackOptions:
     bfd: bool = False
     bfd_num_bins: int = 50
 
-    add_boseos: bool = True
+    add_special_tokens: bool = True
     bos_id: Optional[int] = None
     eos_id: Optional[int] = None
+    mos_id: Optional[int] = None  # middle-of-sentence token (<bos> for mid-document)
+    use_for_mos: Optional[str] = field(choices=["bos", "eos"], default=None)
+
     # Use preset tokenizer config to set bos_id and eos_id
-    tokenizer: str = field(alias=["-T"], default="llama3")
+    tokenizer: Optional[str] = field(alias=["-T"], default=None)
 
 
     sort_by_length: bool = False
@@ -54,33 +57,51 @@ class PackOptions:
     indices_field: str = "indices"
     domain_field: str = "domain"
 
+    def special_tokens_from_tokenizer(self, tokenizer):
+        if tokenizer == "llama3":
+            return 128000, 128001
+        elif tokenizer == "llama2":
+            return 1, 2
+        else:
+            from transformers import AutoTokenizer
+            tokenizer = AutoTokenizer.from_pretrained(tokenizer)
+            return tokenizer.bos_token_id, tokenizer.eos_token_id
+
+
     def __post_init__(self):
-        if self.bos_id is None:
-            if self.tokenizer == "llama3":
-                self.bos_id = 128000
-            elif self.tokenizer == "llama2":
-                self.bos_id = 1
+        if self.tokenizer is not None:
+            bos_id, eos_id = self.special_tokens_from_tokenizer(self.tokenizer)
+            if self.bos_id is None:
+                self.bos_id = bos_id
+            if self.eos_id is None:
+                self.eos_id = eos_id
+
+        if self.use_for_mos is not None:
+            if self.use_for_mos == "bos":
+                self.mos_id = self.bos_id
+            elif self.use_for_mos == "eos":
+                self.mos_id = self.eos_id
             else:
-                from transformers import AutoTokenizer
-                self.bos_id = AutoTokenizer.from_pretrained(self.tokenizer).bos_id
-        if self.eos_id is None:
-            if self.tokenizer == "llama3":
-                self.eos_id = 128001
-            elif self.tokenizer == "llama2":
-                self.eos_id = 2
-            else:
-                from transformers import AutoTokenizer
-                self.eos_id = AutoTokenizer.from_pretrained(self.tokenizer).eos_id
+                raise ValueError(f"Invalid value for use_for_mos: {self.use_for_mos}")
 
 
-def add_sentinels(tokens: NDArray[np.uint32], bos_id: int, eos_id: Optional[int] = None):
+def add_special_tokens(tokens: NDArray[np.uint32], options: PackOptions, bos=False, eos=False, mos=False):
+    if not options.add_special_tokens:
+        return tokens
+
     tokens_list = []
+
     # Add bos_id if not already present and if sequence is not empty
-    if len(tokens) > 0 and tokens[0] != bos_id:
-        tokens_list.append(np.array([bos_id], dtype=tokens.dtype))
+    if bos and options.bos_id is not None and len(tokens) > 0 and tokens[0] != options.bos_id:
+        tokens_list.append(np.array([options.bos_id], dtype=tokens.dtype))
+    elif mos and options.mos_id is not None and len(tokens) > 0 and tokens[0] != options.mos_id:
+        tokens_list.append(np.array([options.mos_id], dtype=tokens.dtype))
+
     tokens_list.append(tokens)
-    if eos_id is not None:
-        tokens_list.append(np.array([eos_id], dtype=tokens.dtype))
+
+    if eos and options.eos_id is not None and len(tokens) > 0 and tokens[-1] != options.eos_id:
+        tokens_list.append(np.array([options.eos_id], dtype=tokens.dtype))
+
     return np.concatenate(tokens_list, axis=0)
 
 
@@ -113,9 +134,7 @@ class SingleBuffer:
             self.token_buffer = []
             self.num_tokens = 0
             if not self.options.single:
-                tokens = tokens[self.max_length - self.options.overlap:]
-                if self.options.add_boseos:
-                    tokens = add_sentinels(tokens, self.options.bos_id)
+                tokens = add_special_tokens(tokens[self.max_length - self.options.overlap:], self.options, mos=True)
 
                 if len(tokens) >= self.min_length:
                     self.token_buffer.append(tokens)
@@ -182,9 +201,7 @@ def pack_fn(data: Array,
                 subset = subset / item[options.split_by_column]
 
         # Concatenate bos/eos
-        input_ids = np.array(item['input_ids'], dtype=np.uint32)
-        if options.add_boseos:
-            input_ids = add_sentinels(input_ids, options.bos_id, options.eos_id)
+        input_ids = add_special_tokens(np.array(item['input_ids'], dtype=np.uint32), options, bos=True, eos=True)
 
         if options.split_by_lengths:
             while len(input_ids) >= sorted_lengths[-1]:
@@ -203,9 +220,7 @@ def pack_fn(data: Array,
                 if options.single:
                     break
 
-                input_ids = input_ids[target_len - options.overlap:]
-                if options.add_boseos:
-                    input_ids = add_sentinels(input_ids, options.bos_id)
+                input_ids = add_special_tokens(input_ids[target_len - options.overlap:], options, mos=True)
         else:
             for item in buffers[subset].process(input_ids):
                 if options.domain_field:
