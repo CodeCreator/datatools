@@ -22,13 +22,16 @@ from streaming.base.array import Array
 class PackOptions:
     """Options for packing"""
 
-    max_length: int = field(alias=["-l"], default=8192)
+    pack_length: int = field(alias=["-l"], default=8192)
+
+    max_length: Optional[int] = field(default=None)
     min_length: int = field(alias=["-s"], default=1)
+
     overlap: int = field(alias=["-o"], default=0)
 
     # Pack sequences into separate subset of fixed lengths
     # This will always pack to the longest available lengths,
-    # Note that it still requires setting max_length
+    # Note that it still requires setting pack_length
     split_by_lengths: List[int] = field(alias=["-f"], default=None)
 
 
@@ -84,6 +87,9 @@ class PackOptions:
             else:
                 raise ValueError(f"Invalid value for use_for_mos: {self.use_for_mos}")
 
+        if self.max_length is None:
+            self.max_length = self.pack_length
+
 
 def add_special_tokens(tokens: NDArray[np.uint32], options: PackOptions, bos=False, eos=False, mos=False):
     if not options.add_special_tokens:
@@ -108,8 +114,6 @@ def add_special_tokens(tokens: NDArray[np.uint32], options: PackOptions, bos=Fal
 class SingleBuffer:
     def __init__(self, options: PackOptions):
         self.options = options
-        self.max_length = self.options.max_length
-        self.min_length = self.options.min_length
 
         self.token_buffer = []
 
@@ -119,13 +123,13 @@ class SingleBuffer:
         self.token_buffer.append(tokens)
         self.num_tokens += len(tokens)
 
-        while self.num_tokens >= self.max_length:
+        while self.num_tokens >= self.options.pack_length:
             tokens = np.concatenate(self.token_buffer, 0)
             item = {
-                self.options.token_field: tokens[:self.max_length]
+                self.options.token_field: tokens[:self.options.max_length]
             }
             if self.options.length_field:
-                item[self.options.length_field] = self.max_length
+                item[self.options.length_field] = self.options.max_length
             if self.options.indices_field:
                 item[self.options.indices_field] = self.compute_indices(self.token_buffer)
 
@@ -134,9 +138,9 @@ class SingleBuffer:
             self.token_buffer = []
             self.num_tokens = 0
             if not self.options.single:
-                tokens = add_special_tokens(tokens[self.max_length - self.options.overlap:], self.options, mos=True)
+                tokens = add_special_tokens(tokens[self.options.max_length - self.options.overlap:], self.options, mos=True)
 
-                if len(tokens) >= self.min_length:
+                if len(tokens) >= self.options.min_length:
                     self.token_buffer.append(tokens)
                     self.num_tokens += len(tokens)
 
@@ -144,15 +148,15 @@ class SingleBuffer:
         indices = []
         start = 0
         for seq in token_buffer:
-            indices.append((start, min(start+len(seq), self.max_length)))
+            indices.append((start, min(start+len(seq), self.options.pack_length)))
             start += len(seq)
-            if start >= self.max_length:
+            if start >= self.options.pack_length:
                 break
         return np.array(indices, dtype=np.uint32)
 
     @property
     def available(self):
-        return self.max_length - self.num_tokens
+        return self.options.pack_length - self.num_tokens
 
 
 # Best-fit-decreasing algorithm from "Fewer Truncations Improve Language Modeling"
@@ -210,7 +214,7 @@ def pack_fn(data: Array,
                                   for target_len in sorted_lengths
                                   if len(input_ids) >= target_len)
 
-                target_subset = subset / f"{target_len}-{options.max_length}"
+                target_subset = subset / f"{target_len}-{options.pack_length}"
 
                 for item in buffers[target_len].process(input_ids[:target_len]):
                     if options.domain_field:
