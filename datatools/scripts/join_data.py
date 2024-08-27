@@ -19,7 +19,7 @@ def join_fn(data: Array,
             prefixes: List[str],
             suffixes: List[str]):
 
-    for i in tqdm(range(len(data)), desc=f"Process {process_id}"):
+    for i in tqdm(range(len(data)), disable=process_id != 0):
         item = data[i]
         for j, join_dataset in enumerate(join_datasets):
             join_item = join_dataset[indices[i]]
@@ -34,7 +34,7 @@ def main():
     parser.add_argument("inputs", type=Path, nargs="+", help="Input dataset paths")
     parser.add_argument("output", type=Path, help="Output dataset path")
 
-    parser.add_argument("-d", "--dataset", type=Path, nargs="+", action="append", help="Input dataset paths that will be added")
+    parser.add_argument("-j", "--join", type=Path, nargs="+", action="append", help="Input dataset paths that will be added")
     parser.add_argument("-p", "--prefix", type=str, action="append", help="Prefix for the fields of the dataset")
     parser.add_argument("-s", "--suffix", type=str, action="append", help="Suffix for the fields of the dataset")
 
