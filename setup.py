@@ -11,6 +11,7 @@ setup(
         'mosaicml-streaming>=0.7.5',
         'datasets>=2.18.0',
         'sentencepiece>=0.1.99',
+        'zstandard>=0.23.0'
         # 'transformers==4.39.3',
     ],
     entry_points={
