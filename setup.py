@@ -21,6 +21,7 @@ setup(
             'merge_data=datatools.scripts.merge_data:main',
             'pack=datatools.scripts.pack:main',
             'splits=datatools.scripts.splits:main',
+            'subsample=datatools.scripts.subsample:main',
             'tokenize=datatools.scripts.tokenize:main',
         ]
     },
