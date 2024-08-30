@@ -18,10 +18,8 @@ setup(
         'console_scripts': [
             'peek=datatools.scripts.peek:main',
             'merge_index=datatools.scripts.merge_index:main',
-            'merge_data=datatools.scripts.merge_data:main',
             'pack=datatools.scripts.pack:main',
-            'splits=datatools.scripts.splits:main',
-            'subsample=datatools.scripts.subsample:main',
+            'wrangle=datatools.scripts.wrangle:main',
             'tokenize=datatools.scripts.tokenize:main',
         ]
     },
