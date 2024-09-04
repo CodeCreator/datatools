@@ -60,5 +60,7 @@ def load(*input_paths: List[Union[Path, str]], options: Optional[LoadOptions] = 
         from datasets import concatenate_datasets
         return concatenate_datasets([load_hf_dataset(path, input_type) for path in input_paths])
     else:
+        if input_type is None and not Path(input_paths[0]).exists():
+            raise ValueError(f"Could not infer input type from non-existent local path: {input_paths[0]}")
         raise ValueError(f"Unknown input type: {input_type}")
 
