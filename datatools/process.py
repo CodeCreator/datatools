@@ -205,5 +205,6 @@ def process(dataset: Sequence,
         with Pool(options.num_proc) as pool:
             pool.map(write_process_, process_args)
 
-    # This gets executed by all jobs but each job will update all index.json
-    merge_index_recursively(output_path)
+    if not options.jsonl and not options.ndarray:
+        # This gets executed by all jobs but each job will update all index.json
+        merge_index_recursively(output_path)
