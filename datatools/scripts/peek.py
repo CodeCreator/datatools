@@ -9,27 +9,13 @@ import random
 import json
 import subprocess
 import sys
-import numpy as np
-from datetime import datetime
 
 from streaming import LocalDataset
 
-from datatools.utils import LocalDatasets
+from datatools.io_utils import LocalDatasets, DatetimeJsonEncoder
 from datatools.load import load, LoadOptions
 
 from simple_parsing import ArgumentParser
-
-
-class DatetimeJsonEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, datetime):
-            return str(obj)
-        if isinstance(obj, np.number):
-            return obj.item()
-        if isinstance(obj, np.ndarray):
-            return obj.tolist()
-
-        return super().default(obj)
 
 
 @contextmanager

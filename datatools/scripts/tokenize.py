@@ -28,10 +28,18 @@ class TokenizeOptions:
     domain: str = ""
     domain_by: Optional[str] = None
 
-    text_field: str = "text"
+    template_file: Optional[Path] = None
+    template: str = "{text}"
+    mask_until: Optional[str] = None  # hacky, not ideal yet
+
     token_field: str = "input_ids"
     length_field: str = "length"
     domain_field: str = "domain"
+
+    def __post_init__(self):
+        if self.template_file is not None:
+            with Path(self.template_file).open() as f:
+                self.template = f.read()
 
 
 def load_tokenizer_encoder(options: TokenizeOptions):
@@ -58,7 +66,8 @@ def tokenize_fn(data: Array,
 
     for i in tqdm(range(len(data)), disable=(process_id != 0)):
         item = data[i]
-        tokens = encode_fn(item[options.text_field][:options.truncate_bytes])
+        text = options.template.format(**item)
+        tokens = encode_fn(text[:options.truncate_bytes])
         domain = item[options.domain_by] if options.domain_by is not None else options.domain
 
         output_item = {
@@ -68,6 +77,13 @@ def tokenize_fn(data: Array,
             output_item[options.length_field] = len(tokens)
         if options.domain_field:
             output_item[options.domain_field] = domain
+
+        if options.mask_until:
+            mask_template = options.template[:options.template.find(options.mask_until)+len(options.mask_until)]
+            mask_text = mask_template.format(**item)
+            num_tokens = len(encode_fn(mask_text[:options.truncate_bytes]))
+
+            output_item["mask"] = np.array([0] * num_tokens + [1] * (len(tokens) - num_tokens), dtype=np.uint8)
 
         yield Path(), output_item
 

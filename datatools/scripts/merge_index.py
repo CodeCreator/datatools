@@ -4,7 +4,7 @@ from functools import partial, reduce
 
 from simple_parsing import ArgumentParser
 
-from datatools.utils import merge_index_recursively
+from datatools.merge_index import merge_index_recursively
 
 
 def main():

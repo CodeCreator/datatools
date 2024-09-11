@@ -10,16 +10,19 @@ from pathlib import Path
 import logging
 
 from multiprocessing import Pool
+from tqdm import tqdm
 
 import numpy as np
 
-from streaming import MDSWriter, JSONWriter
+from streaming import MDSWriter
 
 from simple_parsing import field
 
-from datatools.utils import Subset, merge_index_recursively
+from datatools.merge_index import merge_index_recursively
+from datatools.io_utils import Subset, NDArrayWriter, JsonlWriter
 
 logger = logging.getLogger(__name__)
+
 
 
 @dataclass
@@ -32,7 +35,7 @@ class ProcessOptions:
     # Range of rows to process
     index_range: Optional[Tuple[int, int]] = None
     index_path: Optional[Path] = None
-    indices: Optional[np.ndarray] = field(cmd=False, default=None)
+    indices: Optional[np.ndarray] = field(default=None)
     sort_index: bool = False
 
     job_id: Optional[int] = None    # Job id
@@ -43,6 +46,7 @@ class ProcessOptions:
 
     compression: Optional[str] = None  # Compress output files
     jsonl: bool = False                # Write JSONL files
+    ndarray: bool = False              # Write ndarray files for each column
 
     # Specify column_types like "input_ids=ndarray:uint32,domain=str"
     column_types: str = field(alias=["-c"], default=None)
@@ -92,9 +96,9 @@ def infer_columns(item):
     return columns
 
 
-def identity_fn(dataset, *_):
-    for i in range(len(dataset)):
-        yield Path(), dataset[i]
+def identity_fn(dataset, indices, process_id):
+    for i in tqdm(range(len(dataset)), disable=(process_id != 0)):
+        yield dataset[i]
 
 
 def write_process_(args):
@@ -103,7 +107,12 @@ def write_process_(args):
     dataset = Subset.shard(dataset, process_id, options.num_proc or 1)
     indices = Subset.shard(indices, process_id, options.num_proc or 1)
 
-    writer_cls = JSONWriter if options.jsonl else MDSWriter
+    writer_cls = MDSWriter
+    assert not (options.jsonl and options.ndarray), "Must choose between either --jsonl or --ndarray output mode"
+    if options.jsonl:
+        writer_cls = JsonlWriter
+    if options.ndarray:
+        writer_cls = NDArrayWriter
     writers = {}
 
     try:

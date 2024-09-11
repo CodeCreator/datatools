@@ -7,12 +7,13 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import numpy as np
+from datetime import datetime
 
 from streaming.base.array import Array
 from streaming.base.format import get_index_basename, reader_from_json
 from streaming.base.spanner import Spanner
 
-
+import zstandard
 from filelock import FileLock
 
 
@@ -76,7 +77,6 @@ class JsonlDataset(Array):
             path = Path(path)
             if path.suffixes[-1] in [".zstd", ".zst"]:
                 with Path(path).open("rb") as f:
-                    import zstandard
                     decompressor = zstandard.ZstdDecompressor(max_window_size=2147483648)
                     stream_reader = decompressor.stream_reader(f)
                     self.lines.extend(io.TextIOWrapper(stream_reader, encoding='utf-8').readlines())
@@ -95,50 +95,56 @@ class JsonlDataset(Array):
         return json.loads(self.lines[idx])
 
 
-def merge_index(directory : Path):
-    print(f"Merge the index for {directory}")
-    index_filename = get_index_basename()
 
-    # sorting should ensure that the index order of the original datasets is retained
-    subfolders = sorted([
-        d for d in directory.iterdir()
-        if d.is_dir() and (d / index_filename).is_file()
-    ])
+class NDArrayWriter:
+    def __init__(self, columns, out, compression=None):
+        self.columns = columns
+        self.out = out
 
-    if len(subfolders) > 0:
-        shards = []
-        for d in subfolders:
-            with (d / index_filename).open() as fp:
-                subindex = json.load(fp)
-            for shard in subindex["shards"]:
-                shard['raw_data']['basename'] = str(d.relative_to(d.parent) / shard['raw_data']['basename'])
-                if 'zip_data' in shard and shard['zip_data'] is not None and 'basename' in shard['zip_data']:
-                    shard['zip_data']['basename'] = str(d.relative_to(d.parent) / shard['zip_data']['basename'])
-                shards.append(shard)
-        new_index = {
-            'version': 2,
-            'shards': shards,
-        }
-        with (directory / index_filename).open("w") as fp:
-            json.dump(new_index, fp, indent=4)
+        self.buffers = {}
+
+    def write(self, item):
+        for column in self.columns:
+            if column not in self.buffers:
+                self.buffers[column] = []
+            self.buffers[column].append(item[column])
+
+    def finish(self):
+        if self.buffers:
+            os.makedirs(os.path.dirname(self.out), exist_ok=True)
+            for column, buffer in self.buffers.items():
+                if column:
+                    np.save(f"{self.out}__{column}.npy", np.array(buffer))
+                else:
+                    np.save(f"{self.out}.npy", np.array(buffer))
 
 
-def merge_index_recursively(directory : Path):
-    assert directory.is_dir(), f"{directory} is not a directory"
-    index_filename = get_index_basename()
 
-    subfolders = sorted([d for d in directory.iterdir() if d.is_dir()])
 
-    for subfolder in subfolders:
-        merge_index_recursively(subfolder)
+class DatetimeJsonEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return str(obj)
+        if isinstance(obj, np.number):
+            return obj.item()
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
 
-    if subfolders and all((subfolder / index_filename).is_file() for subfolder in subfolders):
-        # Add a lock to avoid multiple jobs writing to the same index.json
-        with FileLock(directory / (index_filename + ".lock")):
-            index_file = directory / index_filename
-            if index_file.exists():
-                assert index_file.is_file(), f"{index_file} must be a file"
-                index_file.unlink()
+        return super().default(obj)
 
-            merge_index(directory)
 
+class JsonlWriter:
+    def __init__(self, columns, out, compression=None):
+        self.columns = set(columns)
+        self.out = out
+        
+        os.makedirs(os.path.dirname(self.out), exist_ok=True)
+        self.file = open(f"{out}.jsonl", "w")
+
+    def write(self, item):
+        if not self.columns.issubset(item.keys()):
+            print(f"Warning: Item {item} does not contain all columns: {self.columns - item.keys()}")
+        self.file.write(json.dumps(item, cls=DatetimeJsonEncoder) + "\n")
+
+    def finish(self):
+        self.file.close()

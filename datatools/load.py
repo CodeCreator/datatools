@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from pathlib import Path
 
-from datatools.utils import LocalDatasets, JsonlDataset
+from datatools.io_utils import LocalDatasets, JsonlDataset
 
 @dataclass
 class LoadOptions:
