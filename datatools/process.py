@@ -22,6 +22,7 @@ from datatools.merge_index import merge_index_recursively
 from datatools.io_utils import Subset, NDArrayWriter, JsonlWriter
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(format="%(asctime)s - %(levelname)s - %(name)s -   %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 
 
 
@@ -53,6 +54,8 @@ class ProcessOptions:
     columns: Dict[str, str] = field(cmd=False, default=None)
 
     overwrite: bool = False
+
+    log_level: int = logging.INFO
 
     def __post_init__(self):
         if self.slurm_array and self.job_id is None:
@@ -96,8 +99,8 @@ def infer_columns(item):
     return columns
 
 
-def identity_fn(dataset, indices, process_id):
-    for i in tqdm(range(len(dataset)), disable=(process_id != 0)):
+def identity_fn(dataset, indices, process_id, desc=None, disable=False):
+    for i in tqdm(range(len(dataset)), disable=(process_id != 0) or disable, desc=desc):
         yield dataset[i]
 
 
@@ -128,7 +131,7 @@ def write_process_(args):
             if subset not in writers:
                 if options.columns is None:
                     columns = infer_columns(item)
-                    logger.warning(f"Inferred columns \"{subset}\": {columns}")
+                    logger.info(f"Inferred columns \"{subset}\": {columns}")
                 else:
                     columns = options.columns
 
@@ -154,13 +157,13 @@ def load_indices(options):
         assert options.index_range is None, "Cannot specify both index_path and index_range"
 
         indices = np.load(options.index_path)
-        logger.warning(f"Loaded {len(indices)} indices from {options.index_path}")
+        logger.info(f"Loaded {len(indices)} indices from {options.index_path}")
 
     if indices is not None and options.sort_index:
         indices = np.sort(indices)
 
     if options.index_range is not None:
-        logger.warning(f"Using indices from {options.index_range[0]} to {options.index_range[1]}")
+        logger.info(f"Using indices from {options.index_range[0]} to {options.index_range[1]}")
         indices = range(*options.index_range)
 
     return indices
@@ -171,18 +174,19 @@ def process(dataset: Sequence,
             output_path: Union[Path, str],
             options: Optional[ProcessOptions] = None):
     options = copy(options)
+    logger.setLevel(options.log_level)
 
     output_path = Path(output_path)
 
     if options.overwrite and output_path.exists():
         assert options.num_jobs is None or options.num_jobs == 1, "overwrite is incompatible with multiple jobs"
         shutil.rmtree(output_path)
-        logger.warning(f"Removed existing output directory: {output_path}")
+        logger.info(f"Removed existing output directory: {output_path}")
 
     indices = load_indices(options)
     if indices is not None:
         dataset = Subset(dataset, indices)
-        logger.warning(f"Selected {len(dataset)} indices")
+        logger.info(f"Selected {len(dataset)} indices")
     else:
         indices = range(len(dataset))
 
