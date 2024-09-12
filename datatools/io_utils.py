@@ -14,7 +14,34 @@ from streaming.base.format import get_index_basename, reader_from_json
 from streaming.base.spanner import Spanner
 
 import zstandard
-from filelock import FileLock
+from contextlib import contextmanager
+
+
+class ZstdUtf8WriteFile:
+    def __init__(self, filename, level=3):
+        self.filename = filename
+        self.level = level
+        self.file = None
+
+    def open(self):
+        self.file = open(self.filename, "wb")
+        self.compressor = zstandard.ZstdCompressor(level=self.level)
+        self.writer = self.compressor.stream_writer(self.file)
+        self.text_writer = io.TextIOWrapper(self.writer, encoding='utf-8')
+        return self.text_writer
+
+    def close(self):
+        self.text_writer.flush()
+        self.writer.flush(zstandard.FLUSH_FRAME)
+        self.file.close()
+
+
+@contextmanager
+def zstd_utf8_read_open(filename, level=3):
+    with open(filename, "rb") as f:
+        decompressor = zstandard.ZstdDecompressor(max_window_size=2147483648)
+        with decompressor.stream_reader(f) as stream_reader:
+            yield io.TextIOWrapper(stream_reader, encoding='utf-8')
 
 
 class Subset(Array):
@@ -76,12 +103,10 @@ class JsonlDataset(Array):
         for path in paths:
             path = Path(path)
             if path.suffixes[-1] in [".zstd", ".zst"]:
-                with Path(path).open("rb") as f:
-                    decompressor = zstandard.ZstdDecompressor(max_window_size=2147483648)
-                    stream_reader = decompressor.stream_reader(f)
-                    self.lines.extend(io.TextIOWrapper(stream_reader, encoding='utf-8').readlines())
+                with zstd_utf8_read_open(path) as f:
+                    self.lines.extend(f.readlines())
             else:
-                with Path(path).open() as f:
+                with open(path) as f:
                     self.lines.extend(f.readlines())
 
     def __len__(self) -> int:
@@ -137,9 +162,16 @@ class JsonlWriter:
     def __init__(self, columns, out, compression=None):
         self.columns = set(columns)
         self.out = out
-        
+
         os.makedirs(os.path.dirname(self.out), exist_ok=True)
-        self.file = open(f"{out}.jsonl", "w")
+        if compression is not None and compression.startswith("zst"):
+            ext = compression.split(":")[0]
+            level = int(compression.split(":")[1]) if ":" in compression else 3
+            self.file_handle = ZstdUtf8WriteFile(f"{out}.jsonl.{ext}", level)
+            self.file = self.file_handle.open()
+        else:
+            self.file_handle = open(f"{out}.jsonl", "w")
+            self.file = self.file_handle
 
     def write(self, item):
         if not self.columns.issubset(item.keys()):
@@ -147,4 +179,4 @@ class JsonlWriter:
         self.file.write(json.dumps(item, cls=DatetimeJsonEncoder) + "\n")
 
     def finish(self):
-        self.file.close()
+        self.file_handle.close()
