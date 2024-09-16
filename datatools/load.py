@@ -1,5 +1,6 @@
 import pandas as pd
 
+import numpy as np
 from typing import Optional, List, Union
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -49,14 +50,20 @@ def load(*input_paths: List[Union[Path, str]], options: Optional[LoadOptions] = 
             input_type = "mosaic"
         elif path.is_dir() and (path / "state.json").is_file():
             input_type = "hf"
-        for suffix in [".jsonl", ".arrow", ".parquet"]:
-            if path.is_file() and suffix in path.suffixes:
-                input_type = suffix[1:]
+        elif path.is_file():
+            # Best guess from file extension
+            # Iterate over suffixes in reverse order to handle cases like .jsonl.zst
+            for suffix in path.suffixes[::-1]:
+                if suffix in [".arrow", ".parquet", ".npy", ".jsonl"]:
+                    input_type = suffix[1:]
+                    break
 
     if input_type == "mosaic":
         return LocalDatasets(input_paths)
     elif input_type == "jsonl":
         return JsonlDataset(input_paths)
+    elif input_type == "npy":
+        return np.concatenate([np.load(path) for path in input_paths])
     elif input_type in {"hf", "arrow", "parquet", "hub"}:
         from datasets import concatenate_datasets
         return concatenate_datasets([load_hf_dataset(path, input_type) for path in input_paths])
