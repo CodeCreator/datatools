@@ -1,8 +1,9 @@
-import os
+import pandas as pd
 
 from typing import Optional, List, Union
 from collections.abc import Sequence
 from dataclasses import dataclass
+from multiprocessing import Pool
 
 from pathlib import Path
 
@@ -63,4 +64,14 @@ def load(*input_paths: List[Union[Path, str]], options: Optional[LoadOptions] = 
         if input_type is None and not Path(input_paths[0]).exists():
             raise ValueError(f"Could not infer input type from non-existent local path: {input_paths[0]}")
         raise ValueError(f"Unknown input type: {input_type}")
+
+def load_pandas(*input_paths: List[Union[Path, str]], n_rows: int = -1, num_proc: int = 1, options: Optional[LoadOptions] = None) -> pd.DataFrame:
+    dataset = load(*input_paths, options=options)
+    n_rows = n_rows if n_rows > 0 else len(dataset)
+
+    if num_proc > 1:
+        with Pool(num_proc) as pool:
+            return pd.DataFrame(pool.map(dataset.__getitem__, range(n_rows)))
+    else:
+        return pd.DataFrame([dataset[i] for i in range(n_rows)])
 
