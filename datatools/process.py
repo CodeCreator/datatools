@@ -101,7 +101,12 @@ def infer_columns(item):
 
 def identity_fn(dataset, indices, process_id, desc=None, disable=False):
     for i in tqdm(range(len(dataset)), disable=(process_id != 0) or disable, desc=desc):
-        yield dataset[i]
+        if isinstance(dataset[i], dict):
+            yield dataset[i]
+        else:
+            # Numpy arrays as datasets will not return dicts and
+            # they need to be wrapped in a dict to be accepted by writer classes
+            yield {"": dataset[i]}
 
 
 def write_process_(args):
