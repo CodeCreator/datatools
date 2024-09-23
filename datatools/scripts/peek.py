@@ -132,11 +132,11 @@ def main():
         # Select head/tail
         if args.n is not None:
             if args.n > 0:
-                indices = range(0, min(args.n, len(indices)))
+                indices = indices[:min(args.n, len(indices))]
             elif args.n < 0:
-                indices = range(max(0, len(indices) + args.n), len(indices))
+                indices = indices[max(0, len(indices) + args.n):]
             else:
-                indices = range(0, 0)
+                indices = indices[:0]
 
     if args.raw:
         for i in indices:
