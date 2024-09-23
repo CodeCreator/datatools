@@ -113,8 +113,8 @@ def main():
             index_ranges = [0, options.examples[0]]
         else:
             assert len(options.proportions) == 1
-            index_ranges = [0, round(proportions[0] * N)]
-        splits = [None]
+            index_ranges = [0, round(options.proportions[0] * N)]
+        splits = [""]
 
     if options.randomize:
         np.random.seed(options.seed)
