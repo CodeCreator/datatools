@@ -1,6 +1,6 @@
 ## *datatools*
 
-Common NLP data utilities (tokenizing, splitting, packing, ...) designed for [Mosaic Streaming Datasets](https://docs.mosaicml.com/projects/streaming/en/stable/index.html).
+Common NLP data utilities (tokenizing, splitting, packing, ...), with special support for [Mosaic Streaming Datasets](https://docs.mosaicml.com/projects/streaming/en/stable/index.html).
 
 #### Installation
 
@@ -18,8 +18,5 @@ Clone this repo and install via `pip install -e .`
 * `tokenize`: tokenize datasets per document
 * `pack`: pack tokenized documents into fixed sequences
 * `peek`: print datasets as json to stdout
-* `splits`: make random splits, e.g., train/test/validation
-* `merge_data`: merge datasets of same length with different features
+* `wrangle`: subsample, merge datasets, make random splits (e.g., train/test/validation), etc...
 * `merge_index`: merge mosaic streaming datasets in subfolders to a big dataset
-
-
