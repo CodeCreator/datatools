@@ -89,10 +89,10 @@ def main():
                         action="store_true",
                         help="Print compact entries (jsonl)")
 
-    parser.add_argument("-s", "--shuffle",
+    parser.add_argument("-x", "--shuffle", "--randomize",
                         action="store_true",
                         help="Shuffle data")
-    parser.add_argument("-S", "--seed",
+    parser.add_argument("-s", "--seed",
                         default=42,
                         type=int,
                         help="Seed for shuffling data")

@@ -24,7 +24,7 @@ class WrangleOptions:
     proportions: List[float] = field(alias="-p", default_factory=lambda: [1.0])
     examples: Optional[List[int]] = field(alias="-n", default=None)
 
-    randomize: bool = field(alias="-r", default=True)
+    shuffle: bool = field(alias=["-x", "--randomize"], default=True)
     seed: int = 42
 
     join: List[List[Path]] = field(alias="-J", required=False, default_factory=lambda: [], action="append", type=Path, nargs="+") # Other input dataset paths that will be joined along the index
@@ -116,7 +116,7 @@ def main():
             index_ranges = [0, round(options.proportions[0] * N)]
         splits = [""]
 
-    if options.randomize:
+    if options.shuffle:
         np.random.seed(options.seed)
         indices = indices[np.random.permutation(len(indices))]
 
