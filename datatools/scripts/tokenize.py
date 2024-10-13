@@ -58,13 +58,12 @@ def load_tokenizer_encoder(options: TokenizeOptions):
 
 
 def tokenize_fn(data: Array,
-                indices: Array,
                 process_id: int,
                 options: TokenizeOptions):
 
     encode_fn = load_tokenizer_encoder(options)
 
-    for i in tqdm(range(len(data)), disable=(process_id != 0)):
+    for i in tqdm(range(len(data)), desc=f"Process {process_id}"):
         item = data[i]
         text = options.template.format(**item)
         tokens = encode_fn(text[:options.truncate_bytes])
@@ -85,7 +84,7 @@ def tokenize_fn(data: Array,
 
             output_item["mask"] = np.array([0] * num_tokens + [1] * (len(tokens) - num_tokens), dtype=np.uint8)
 
-        yield Path(), output_item
+        yield output_item
 
 
 def main():

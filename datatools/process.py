@@ -1,5 +1,6 @@
 import os
 
+from inspect import signature
 from typing import Optional, Tuple, Dict, Any, Callable, Union
 from collections.abc import Sequence, Iterator
 from copy import copy
@@ -123,8 +124,20 @@ def write_process_(args):
         writer_cls = NDArrayWriter
     writers = {}
 
+    process_fn_params = signature(process_fn).parameters
+    num_positional_params = sum(1 for param in process_fn_params.values() if param.default == param.empty)
+
     try:
-        for result in process_fn(dataset, indices, process_id):
+        if num_positional_params == 1:
+            results_generator = process_fn(dataset)
+        elif num_positional_params == 2 and 'process_id' not in process_fn_params:
+            results_generator = process_fn(dataset, indices)
+        elif num_positional_params == 2 and 'process_id' in process_fn_params:
+            results_generator = process_fn(dataset, process_id=process_id)
+        else:
+            results_generator = process_fn(dataset, indices, process_id)
+
+        for result in results_generator:
             if isinstance(result, tuple):
                 subset, item = result
                 subset = Path(subset if subset is not None else "")
