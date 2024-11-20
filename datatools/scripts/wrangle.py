@@ -136,7 +136,9 @@ def main():
                 args.output / split,
                 process_options)
 
-    merge_index_recursively(args.output)
+
+    if not process_options.jsonl and not process_options.ndarray:
+        merge_index_recursively(args.output)
 
 
 if __name__ == "__main__":

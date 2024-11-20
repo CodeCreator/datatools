@@ -136,7 +136,9 @@ class NDArrayWriter:
 
     def finish(self):
         if self.buffers:
-            os.makedirs(os.path.dirname(self.out), exist_ok=True)
+            parent_folder = os.path.dirname(self.out)
+            if parent_folder:
+                os.makedirs(parent_folder, exist_ok=True)
             for column, buffer in self.buffers.items():
                 if column:
                     np.save(f"{self.out}__{column}.npy", np.array(buffer))
@@ -162,8 +164,10 @@ class JsonlWriter:
     def __init__(self, columns, out, compression=None):
         self.columns = set(columns)
         self.out = out
-
-        os.makedirs(os.path.dirname(self.out), exist_ok=True)
+        
+        parent_folder = os.path.dirname(self.out)
+        if parent_folder:
+            os.makedirs(parent_folder, exist_ok=True)
         if compression is not None and compression.startswith("zst"):
             ext = compression.split(":")[0]
             level = int(compression.split(":")[1]) if ":" in compression else 3
