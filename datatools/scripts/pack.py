@@ -24,7 +24,7 @@ class PackOptions:
 
     pack_length: int = field(alias=["-l"], default=8192)
 
-    max_length: Optional[int] = field(default=None)
+    # Skip documents chunks with fewer tokens than `min_length`
     min_length: int = field(alias=["-s"], default=1)
 
     overlap: int = field(alias=["-o"], default=0)
@@ -87,9 +87,6 @@ class PackOptions:
             else:
                 raise ValueError(f"Invalid value for use_for_mos: {self.use_for_mos}")
 
-        if self.max_length is None:
-            self.max_length = self.pack_length
-
 
 def add_special_tokens(tokens: NDArray[np.uint32], options: PackOptions, bos=False, eos=False, mos=False):
     if not options.add_special_tokens:
@@ -126,10 +123,10 @@ class SingleBuffer:
         while self.num_tokens >= self.options.pack_length:
             tokens = np.concatenate(self.token_buffer, 0)
             item = {
-                self.options.token_field: tokens[:self.options.max_length]
+                self.options.token_field: tokens[:self.options.pack_length]
             }
             if self.options.length_field:
-                item[self.options.length_field] = self.options.max_length
+                item[self.options.length_field] = self.options.pack_length
             if self.options.indices_field:
                 item[self.options.indices_field] = self.compute_indices(self.token_buffer)
 
@@ -138,7 +135,7 @@ class SingleBuffer:
             self.token_buffer = []
             self.num_tokens = 0
             if not self.options.single:
-                tokens = add_special_tokens(tokens[self.options.max_length - self.options.overlap:], self.options, mos=True)
+                tokens = add_special_tokens(tokens[self.options.pack_length - self.options.overlap:], self.options, mos=True)
 
                 if len(tokens) >= self.options.min_length:
                     self.token_buffer.append(tokens)
@@ -179,7 +176,7 @@ class BFDBuffer:
 
 
 def pack_fn(data: Array,
-            indices: Array,
+            global_indices: Array,
             process_id: int,
             options: PackOptions):
     buffer_cls = BFDBuffer if options.bfd else SingleBuffer
