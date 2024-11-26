@@ -37,7 +37,7 @@ class WrangleOptions:
 
 
 def join_fn(data: Array,
-            indices: Array,
+            global_indices: Array,
             process_id: int,
             join_datasets: List[Array],
             prefixes: List[str],
@@ -46,14 +46,14 @@ def join_fn(data: Array,
     for i in tqdm(range(len(data)), disable=process_id != 0):
         item = data[i]
         for j, join_dataset in enumerate(join_datasets):
-            join_item = join_dataset[indices[i]]
+            join_item = join_dataset[global_indices[i]]
             for key, value in join_item.items():
                 item[prefixes[j] + key + suffixes[j]] = value
         yield item
 
 
 def split_fn(data: Array,
-             indices: Array,
+             global_indices: Array,
              process_id: int,
              partitions: Dict[str, int],
              seed: int):
@@ -65,7 +65,7 @@ def split_fn(data: Array,
     np.random.shuffle(partition_id)
 
     for i in tqdm(range(len(data)), disable=process_id!=0):
-        yield partition_names[partition_id[indices[i]]], data[i]
+        yield partition_names[partition_id[global_indices[i]]], data[i]
 
 
 def main():

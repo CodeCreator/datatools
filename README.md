@@ -11,7 +11,12 @@ Clone this repo and install via `pip install -e .`
 *datatools* contributes some core libraries that can be used to easily build custom data pipelines, specifically `from datatools import load, process`.
 
 * `load(path, load_options)`: loads the dataset at the path, while trying to infer what format it is in (e.g., compressed json, pyarrow, MDS, ...) based on clues from the file format and directory structure.
-* `process(input_dataset, process_fn, output_path, process_options)`: processes an input dataset and writes the results to disk. It supports *multi-processing* and *slurm array parallelization* and *custom indexing*, see [ProcessOptions](https://github.com/CodeCreator/datatools/blob/main/datatools/process.py#L30) for details. `process_fn` is a function that should take up to three arguments: (1) a subset of the data with `len(...)` and `.[...]` access, (2) the global indices corresponding to the subset, and (3) the `process_id` for logging purposes.
+* `process(input_dataset, process_fn, output_path, process_options)`: processes an input dataset and writes the results to disk. It supports *multi-processing* and *slurm array parallelization* and *custom indexing*, see [ProcessOptions](https://github.com/CodeCreator/datatools/blob/main/datatools/process.py#L30) for details.
+
+`process_fn` is a function that should take up to three arguments:
+1. a subset of the data with `len(...)` and `.[...]` access,
+2. the global indices corresponding to the subset
+3. the `process_id` for logging purposes
 
 #### Scripts
 
