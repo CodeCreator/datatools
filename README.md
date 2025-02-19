@@ -1,10 +1,10 @@
-## datatools: simple utilities for common data operations (tokenizing, splitting, packing, ...)
+## datatools: simple utilities for common data operations (tokenizing, subsampling, ...)
 
 Built with special support for [Mosaic Streaming Datasets (MDS)](https://docs.mosaicml.com/projects/streaming/en/stable/index.html).
 
 #### Installation
 
-Clone this repo and install via `pip install -e .`
+Clone this repo and install via `pip install -e .` or install from pypi via `pip install datatools-py`.
 
 #### Library
 
