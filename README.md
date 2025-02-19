@@ -10,13 +10,49 @@ Clone this repo and install via `pip install -e .`
 
 *datatools* contributes some core libraries that can be used to easily build custom data pipelines, specifically `from datatools import load, process`.
 
-* `load(path, load_options)`: loads the dataset at the path, while trying to infer what format it is in (e.g., compressed json, pyarrow, MDS, ...) based on clues from the file format and directory structure.
-* `process(input_dataset, process_fn, output_path, process_options)`: processes an input dataset and writes the results to disk. It supports *multi-processing* and *slurm array parallelization* and *custom indexing*, see [ProcessOptions](https://github.com/CodeCreator/datatools/blob/main/datatools/process.py#L30) for details.
+###### `load(path, load_options)` 
+Loads the dataset at the path _**tries to infer what format it is in**_ (e.g., compressed json, pyarrow, MDS, ...) based on clues from the file format and directory structure
 
-`process_fn` is a function that should take up to three arguments:
-1. a subset of the data with `len(...)` and `.[...]` access,
-2. the global indices corresponding to the subset
-3. the `process_id` for logging purposes
+###### `process(input_dataset, process_fn, output_path, process_options)`
+
+Processes an input dataset and writes the results to disk. It supports:
+1. Multi-processing with many CPUs, e.g. `ProcessOptions(num_proc=16)` (or as flag `-w 16`)
+2. Slurm array parallelization, e.g. `ProcessOptions(slurm_array=True)` (or `--slurm_array`) automatically sets up `job_id` and `num_jobs` using slurm environment variables
+3. Custom indexing, e.g. only working on a subset `--index_range 0 30` or using a custom index file `--index_path path/to/index.npy`
+See [ProcessOptions](https://github.com/CodeCreator/datatools/blob/main/datatools/process.py#L30) for details.
+4. By default we write the output file as mosaic-streaming MDS shards, which we merge into a single MDS dataset when the job finishes. However, the code also supports writing to JSONL files (`--jsonl`) and ndarray files for each column (`--ndarray`). The shards for these output formats are not automatically merged.
+
+The `process_fn` should be a function takes one to three arguments:
+1. A subset of the data with `len(...)` and `.[...]` access
+2. The global indices corresponding to the subset (optionally)
+3. The `process_id` for logging or sharding purposes (optionally)
+
+##### Example
+
+```python
+from datatools import load, process, ProcessOptions
+from transformers import AutoTokenizer
+
+# Load dataset (can be json, parquet, MDS, etc.)
+dataset = load("path/to/dataset")
+
+# Setup tokenizer and processing function
+tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.1-8B")
+def tokenize_docs(data_subset):
+    for item in data_subset:
+        # Tokenize text and return dict with tokens and length
+        tokens = tokenizer.encode(item["text"], add_special_tokens=False)
+        
+        # Chunk the text into 1024 token chunks
+        for i in range(0, len(tokens), 1024):
+            yield {
+                "input_ids": tokens[i:i+1024],
+                "length": len(tokens[i:i+1024])
+            }
+
+# Process dataset with 4 workers and write to disk
+process(dataset, tokenize_docs, "path/to/output", process_options=ProcessOptions(num_proc=4))
+```
 
 #### Scripts
 
