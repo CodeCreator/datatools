@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-    name='datatools',
+    name='datatools-py',
     version='0.1',
     packages=['datatools'],
     install_requires=[
@@ -13,6 +13,16 @@ setup(
         'sentencepiece>=0.1.99',
         'zstandard>=0.23.0'
         # 'transformers==4.39.3',
+    ],
+    author='Alexander Wettig',
+    description='Library and scripts for common LM data utilities (tokenizing, splitting, packing, ...)',
+    long_description=open('README.md').read(),
+    long_description_content_type='text/markdown',
+    url='https://github.com/CodeCreator/datatools',
+    classifiers=[
+        'Programming Language :: Python :: 3',
+        'License :: OSI Approved :: MIT License',
+        'Operating System :: OS Independent',
     ],
     entry_points={
         'console_scripts': [
