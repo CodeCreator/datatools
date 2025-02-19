@@ -1,4 +1,5 @@
-# datatools: simple functions and scripts for common data operations (tokenizing, splitting, sampling, packing, ...)
+## datatools: simple utilities for common data operations (tokenizing, splitting, packing, ...)
+
 Built with special support for [Mosaic Streaming Datasets (MDS)](https://docs.mosaicml.com/projects/streaming/en/stable/index.html).
 
 #### Installation
