@@ -1,6 +1,5 @@
-## *datatools*
-
-Common NLP data utilities (tokenizing, splitting, packing, ...), with special support for [Mosaic Streaming Datasets](https://docs.mosaicml.com/projects/streaming/en/stable/index.html).
+# datatools: Library and scripts for common LM data utilities (tokenizing, splitting, packing, ...)
+Built with special support for [Mosaic Streaming Datasets (MDS)](https://docs.mosaicml.com/projects/streaming/en/stable/index.html).
 
 #### Installation
 
