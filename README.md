@@ -1,4 +1,6 @@
-## datatools: simple utilities for common data operations (tokenizing, subsampling, ...)
+## *datatools*: simple utilities for common data operations
+
+Scripts and reusable functions for implementing common data operations (tokenization, splitting, subsampling, packing, ...)
 
 Built with special support for [Mosaic Streaming Datasets (MDS)](https://docs.mosaicml.com/projects/streaming/en/stable/index.html).
 
