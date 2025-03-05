@@ -267,6 +267,9 @@ def main():
     parser.add_arguments(PackOptions, dest="pack_options")
     parser.add_arguments(LoadOptions, dest="load_options")
     parser.add_arguments(ProcessOptions, dest="process_options")
+    
+    parser.add_argument("-x", "--shuffle", action="store_true", help="Shuffle the dataset")
+    parser.add_argument("--seed", type=int, default=42, help="Shuffle seed")
 
     args = parser.parse_args()
 
@@ -274,6 +277,13 @@ def main():
     dataset = load(*args.inputs, options=args.load_options)
     N = len(dataset)
     print(f"Loaded dataset with {N} samples")
+    
+    if args.shuffle:
+        indices = load_indices(args.process_options)
+        if indices is None:
+            indices = np.arange(N)
+        np.random.seed(args.seed)
+        args.process_options.indices = indices[np.random.permutation(len(indices))]
 
     process(dataset,
             partial(pack_fn, options=args.pack_options),
