@@ -213,17 +213,35 @@ class ChatFormat:
 
     def encode_message(self, message: Message) -> List[int]:
         tokens = self.encode_header(message)
-        tokens.extend(
-            self.tokenizer.encode(message["content"].strip(), bos=False, eos=False)
-        )
+        masks = [0] * len(tokens)
+        
+        assistant_mask = 1 if message["role"] == "assistant" else 0
+        
+        message = self.tokenizer.encode(message["content"].strip(), bos=False, eos=False)
+        tokens.extend(message)
+        masks.extend([assistant_mask] * len(message))
+        
         tokens.append(self.tokenizer.special_tokens["<|eot_id|>"])
-        return tokens
+        masks.append(assistant_mask)
+        
+        return tokens, masks
 
-    def encode_dialog_prompt(self, dialog: Dialog) -> List[int]:
+    def encode_dialog_prompt(self, dialog: Dialog, return_assistant_masks: bool = False) -> List[int]:
         tokens = []
+        masks = []
+        
         tokens.append(self.tokenizer.special_tokens["<|begin_of_text|>"])
+        masks.append(0)
+        
         for message in dialog:
-            tokens.extend(self.encode_message(message))
-        # Add the start of an assistant message for the model to complete.
-        tokens.extend(self.encode_header({"role": "assistant", "content": ""}))
-        return tokens
+            t, m = self.encode_message(message)
+            tokens.extend(t)
+            masks.extend(m)
+        
+        # # Add the start of an assistant message for the model to complete.
+        # tokens.extend(self.encode_header({"role": "assistant", "content": ""}))
+        
+        if return_assistant_masks:
+            return tokens, masks
+        else:
+            return tokens
