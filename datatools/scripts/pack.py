@@ -13,8 +13,7 @@ from simple_parsing import ArgumentParser, field
 
 from collections import defaultdict
 
-from datatools.load import load, LoadOptions
-from datatools.process import process, ProcessOptions
+from datatools import load, LoadOptions, load_indices, process, ProcessOptions
 from streaming.base.array import Array
 
 
@@ -59,6 +58,7 @@ class PackOptions:
     length_field: str = "length"
     indices_field: str = "indices"
     domain_field: str = "domain"
+    other_fields: List[str] = field(default_factory=list)
 
     def special_tokens_from_tokenizer(self, tokenizer):
         if tokenizer == "llama3":
@@ -109,8 +109,9 @@ def add_special_tokens(tokens: NDArray[np.uint32], options: PackOptions, bos=Fal
 
 
 class SingleBuffer:
-    def __init__(self, options: PackOptions):
+    def __init__(self, options: PackOptions, output_field: Optional[str] = None):
         self.options = options
+        self.output_field = options.token_field if output_field is None else output_field
 
         self.token_buffer = []
 
@@ -123,7 +124,7 @@ class SingleBuffer:
         while self.num_tokens >= self.options.pack_length:
             tokens = np.concatenate(self.token_buffer, 0)
             item = {
-                self.options.token_field: tokens[:self.options.pack_length]
+                self.output_field: tokens[:self.options.pack_length]
             }
             if self.options.length_field:
                 item[self.options.length_field] = self.options.pack_length
@@ -158,8 +159,8 @@ class SingleBuffer:
 
 # Best-fit-decreasing algorithm from "Fewer Truncations Improve Language Modeling"
 class BFDBuffer:
-    def __init__(self, options: PackOptions):
-        self.buffers = [SingleBuffer(options) for _ in range(options.bfd_num_bins)]
+    def __init__(self, options: PackOptions, output_field: Optional[str] = None):
+        self.buffers = [SingleBuffer(options, output_field) for _ in range(options.bfd_num_bins)]
 
     def add(self, tokens: NDArray):
         available_buffers = [buffer for buffer in self.buffers if buffer.available >= len(tokens)]
@@ -179,8 +180,13 @@ def pack_fn(data: Array,
             global_indices: Array,
             process_id: int,
             options: PackOptions):
+
     buffer_cls = BFDBuffer if options.bfd else SingleBuffer
     buffers = defaultdict(partial(buffer_cls, options=options))
+    other_buffers = {
+        field: defaultdict(partial(buffer_cls, options=options, output_field=field))
+        for field in options.other_fields
+    }
 
     indices = list(range(len(data)))
     if options.sort_by_length:
@@ -201,9 +207,12 @@ def pack_fn(data: Array,
             else:
                 subset = subset / item[options.split_by_column]
 
-        # Concatenate bos/eos
-        input_ids = add_special_tokens(np.array(item['input_ids'], dtype=np.uint32), options, bos=True, eos=True)
-
+        input_ids = add_special_tokens(np.array(item[options.token_field], dtype=np.uint32), options, bos=True, eos=True)
+        other_seqs = {
+            field: add_special_tokens(np.array(item[field], dtype=np.uint32), options, bos=True, eos=True)
+            for field in options.other_fields
+        }
+        
         if options.split_by_lengths:
             while len(input_ids) >= sorted_lengths[-1]:
                 # From longest to shortest
@@ -212,20 +221,42 @@ def pack_fn(data: Array,
                                   if len(input_ids) >= target_len)
 
                 target_subset = subset / f"{target_len}-{options.pack_length}"
-
+                
+                other_iterators = {
+                    field: iter(list(other_buffers[field][target_len].process(seq[:target_len])))
+                    for field, seq in other_seqs.items()
+                }
                 for item in buffers[target_len].process(input_ids[:target_len]):
                     if options.domain_field:
                         item.update({options.domain_field: str(target_subset)})
+                        
+                    for field, iterator in other_iterators.items():
+                        item[field] = next(iterator)[field]
+                        assert len(item[field]) == len(item[options.token_field])
+                    
                     yield target_subset, item
 
                 if options.single:
                     break
 
                 input_ids = add_special_tokens(input_ids[target_len - options.overlap:], options, mos=True)
+                
+                for field, iterator in other_iterators.items():
+                    other_seqs[field] = add_special_tokens(other_seqs[field][target_len - options.overlap:], options, mos=True)
         else:
+            other_iterators = {
+                field: iter(list(other_buffers[field][subset].process(seq)))
+                for field, seq in other_seqs.items()
+            }
+            
             for item in buffers[subset].process(input_ids):
                 if options.domain_field:
                     item.update({options.domain_field: str(subset)})
+                
+                for field, iterator in other_iterators.items():
+                    item[field] = next(iterator)[field]
+                    assert len(item[field]) == len(item[options.token_field])
+                    
                 yield subset, item
 
 
