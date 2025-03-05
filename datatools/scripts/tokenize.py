@@ -23,14 +23,17 @@ class TokenizeOptions:
     # Otherwise HF tokenizer name
     tokenizer: str = field(alias=["-T"], default="llama3")
 
-    truncate_bytes: int = 10_000_000_000
-
     domain: str = ""
     domain_by: Optional[str] = None
 
+    # Either specify a chat template or a template file
+    chat_template: bool = False
+    chat_messages_field: Optional[str] = "messages"
+    chat_assistant_masking: bool = True
+
     template_file: Optional[Path] = None
     template: str = "{text}"
-    mask_until: Optional[str] = None  # hacky, not ideal yet
+    truncate_bytes: int = 10_000_000_000    #  Only usedwithout chat template
 
     token_field: str = "input_ids"
     length_field: str = "length"
@@ -43,18 +46,45 @@ class TokenizeOptions:
 
 
 def load_tokenizer_encoder(options: TokenizeOptions):
-    if options.tokenizer == "llama2":
-        from datatools.scripts.tokenizers.llama2_tokenizer import Tokenizer
-        tokenizer = Tokenizer(str(Path(__file__).parent / "tokenizers" / "llama2_tokenizer.model"))
-        return partial(tokenizer.encode, bos=False, eos=False)
-    elif options.tokenizer == "llama3":
-        from datatools.scripts.tokenizers.llama3_tokenizer import Tokenizer
-        tokenizer = Tokenizer(str(Path(__file__).parent / "tokenizers" / "llama3_tokenizer.model"))
-        return partial(tokenizer.encode, bos=False, eos=False)
+    if options.tokenizer in ["llama2", "llama3"]:
+        if options.tokenizer == "llama2":
+            from datatools.scripts.tokenizers.llama2_tokenizer import Tokenizer
+            tokenizer = Tokenizer(str(Path(__file__).parent / "tokenizers" / "llama2_tokenizer.model"))
+        else:
+            from datatools.scripts.tokenizers.llama3_tokenizer import Tokenizer
+            tokenizer = Tokenizer(str(Path(__file__).parent / "tokenizers" / "llama3_tokenizer.model"))
+        from datatools.scripts.tokenizers.llama3_tokenizer import ChatFormat
+        
+        if options.chat_template:
+            chat_format = ChatFormat(tokenizer)
+            def encode_fn(item):
+                dialog = item[options.chat_messages_field]
+                return chat_format.encode_dialog_prompt(dialog, return_assistant_masks=options.chat_assistant_masking)
+            return encode_fn
+        else:
+            def encode_fn(item):
+                text = options.template.format(**item)
+                tokens = tokenizer.encode(text[:options.truncate_bytes], bos=False, eos=False)
+                return tokens
+            return encode_fn
     else:
         from transformers import AutoTokenizer
         tokenizer = AutoTokenizer.from_pretrained(options.tokenizer)
-        return partial(tokenizer.encode, add_special_tokens=False)
+        assert not options.chat_assistant_masking, "Chat masking is not supported for HF tokenizers (yet)"
+        if options.chat_template:
+            def encode_fn(item):
+                dialog = item[options.chat_messages_field]
+                tokens = chat_format.apply_chat_template(dialog, truncation=False, max_length=None)
+                return tokens
+            return encode_fn
+        else:
+            def encode_fn(item):
+                text = options.template.format(**item)
+                tokens = tokenizer.encode(text[:options.truncate_bytes], add_special_tokens=False, truncation=False, max_length=None)
+                return tokens
+    return encode_fn
+
+        
 
 
 def tokenize_fn(data: Array,
@@ -65,24 +95,25 @@ def tokenize_fn(data: Array,
 
     for i in tqdm(range(len(data)), desc=f"Process {process_id}"):
         item = data[i]
-        text = options.template.format(**item)
-        tokens = encode_fn(text[:options.truncate_bytes])
         domain = item[options.domain_by] if options.domain_by is not None else options.domain
+        
+        if options.chat_template and options.chat_assistant_masking:
+            tokens, masks = encode_fn(item)
 
-        output_item = {
-            options.token_field: np.array(tokens, dtype=np.uint32),
-        }
+            output_item = {
+                options.token_field: np.array(tokens, dtype=np.uint32),
+                "mask": np.array(masks, dtype=np.uint8)
+            }
+        else:
+            tokens = encode_fn(item)
+            output_item = {
+                options.token_field: np.array(tokens, dtype=np.uint32),
+            }
+        
         if options.length_field:
             output_item[options.length_field] = len(tokens)
         if options.domain_field:
             output_item[options.domain_field] = domain
-
-        if options.mask_until:
-            mask_template = options.template[:options.template.find(options.mask_until)+len(options.mask_until)]
-            mask_text = mask_template.format(**item)
-            num_tokens = len(encode_fn(mask_text[:options.truncate_bytes]))
-
-            output_item["mask"] = np.array([0] * num_tokens + [1] * (len(tokens) - num_tokens), dtype=np.uint8)
 
         yield output_item
 
