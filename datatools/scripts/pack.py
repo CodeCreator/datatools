@@ -33,9 +33,8 @@ class PackOptions:
     # Note that it still requires setting pack_length
     split_by_lengths: List[int] = field(alias=["-f"], default=None)
 
-
-    # Only include a single sequence per document
-    single: bool = False
+    # Every sequence starts with the beginning of the original document
+    intact: bool = False
 
     bfd: bool = False
     bfd_num_bins: int = 50
@@ -48,7 +47,6 @@ class PackOptions:
 
     # Use preset tokenizer config to set bos_id and eos_id
     tokenizer: Optional[str] = field(alias=["-T"], default=None)
-
 
     sort_by_length: bool = False
 
@@ -135,7 +133,7 @@ class SingleBuffer:
 
             self.token_buffer = []
             self.num_tokens = 0
-            if not self.options.single:
+            if not self.options.intact:
                 tokens = add_special_tokens(tokens[self.options.pack_length - self.options.overlap:], self.options, mos=True)
 
                 if len(tokens) >= self.options.min_length:
@@ -236,7 +234,7 @@ def pack_fn(data: Array,
                     
                     yield target_subset, item
 
-                if options.single:
+                if options.intact:
                     break
 
                 input_ids = add_special_tokens(input_ids[target_len - options.overlap:], options, mos=True)
