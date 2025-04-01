@@ -26,16 +26,12 @@ def load_from_hub(path: str):
     return load_dataset(path, name=(name[0] if name else None), split=(split[0] if split else None))
 
 
-def load_csv(path: Union[Path, str], tsv: bool = False):
+def load_csv(path: Union[Path, str]):
     from datasets import load_dataset
-    if tsv:
+    if "tsv" in path:
         return load_dataset("csv", data_files=path, delimiter="\t")['train']
     else:
         return load_dataset("csv", data_files=path)['train']
-
-
-def load_tsv(path: Union[Path, str]):
-    return load_csv(path, tsv=True)
 
 
 def load_hf_dataset(path: Union[Path, str], input_type: str):
@@ -48,7 +44,7 @@ def load_hf_dataset(path: Union[Path, str], input_type: str):
         "parquet": Dataset.from_parquet,
         "hub": load_from_hub,
         "csv": load_csv,
-        "tsv": load_tsv,
+        "tsv": load_csv,
     }[input_type](path)
 
 
