@@ -12,10 +12,14 @@ Clone this repo and install via `pip install -e .` or install from pypi via `pip
 
 *datatools* contributes some core libraries that can be used to easily build custom data pipelines, specifically `from datatools import load, process`.
 
-###### `load(path, load_options)` 
+```python
+load(path, load_options)
+``` 
 Loads the dataset at the path _**tries to infer what format it is in**_ (e.g., compressed json, pyarrow, MDS, ...) based on clues from the file format and directory structure
 
-###### `process(input_dataset, process_fn, output_path, process_options)`
+```python
+process(input_dataset, process_fn, output_path, process_options)
+```
 
 Processes an input dataset and writes the results to disk. It supports:
 1. Multi-processing with many CPUs, e.g. `ProcessOptions(num_proc=16)` (or as flag `-w 16`)
