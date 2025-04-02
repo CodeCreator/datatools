@@ -1,10 +1,10 @@
-# 🛠️ *datatools*: Simple Utilities for Common Data Actions
+# 🛠️ *datatools*: simple utilities for common data actions
 
 Minimal scripts and reusable functions for implementing common data operations (tokenization, splitting, subsampling, packing, and more).
 
 Built with special support for [Mosaic Streaming Datasets (MDS)](https://docs.mosaicml.com/projects/streaming/en/stable/index.html).
 
-## Table of Contents
+## Table of contents
 - [Installation](#installation)
 - [Library](#library)
   - [Core Functions](#core-functions)
@@ -19,7 +19,7 @@ Clone this repo and install via `pip install -e .` or install from PyPI via `pip
 
 *datatools* provides core libraries that can be used to easily build custom data pipelines, specifically through `from datatools import load, process`.
 
-### Core Functions
+### Core functions
 
 ```python
 load(path, load_options)
