@@ -12,15 +12,17 @@ Clone this repo and install via `pip install -e .` or install from pypi via `pip
 
 *datatools* contributes some core libraries that can be used to easily build custom data pipelines, specifically `from datatools import load, process`.
 
+
 ```python
 load(path, load_options)
-``` 
-Loads the dataset at the path _**tries to infer what format it is in**_ (e.g., compressed json, pyarrow, MDS, ...) based on clues from the file format and directory structure
+```
+Loads the dataset at the path _**tries to infer its format**_ (e.g., compressed json, pyarrow, MDS, ...) based on clues from the file format and directory structure.
+
+---
 
 ```python
 process(input_dataset, process_fn, output_path, process_options)
 ```
-
 Processes an input dataset and writes the results to disk. It supports:
 1. Multi-processing with many CPUs, e.g. `ProcessOptions(num_proc=16)` (or as flag `-w 16`)
 2. Slurm array parallelization, e.g. `ProcessOptions(slurm_array=True)` (or `--slurm_array`) automatically sets up `job_id` and `num_jobs` using slurm environment variables
@@ -32,6 +34,7 @@ The `process_fn` should be a function takes one to three arguments:
 1. A subset of the data with `len(...)` and `.[...]` access
 2. The global indices corresponding to the subset (optionally)
 3. The `process_id` for logging or sharding purposes (optionally)
+
 
 ##### Example
 
