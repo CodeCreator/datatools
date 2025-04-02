@@ -15,6 +15,8 @@ Clone this repo and install via `pip install -e .` or install from pypi via `pip
 ###### `load(path, load_options)` 
 Loads the dataset at the path _**tries to infer what format it is in**_ (e.g., compressed json, pyarrow, MDS, ...) based on clues from the file format and directory structure
 
+For loading from datasets hosted on huggingface hub, you can use the `hub` input type and specify the dataset name as `path/to/dataset>name#split`. For example, `load("tatsu-lab/alpaca_eval>alpaca_eval#eval")` is equivalent to `datasets.load_dataset("tatsu-lab/alpaca_eval", split="eval")`.
+
 ###### `process(input_dataset, process_fn, output_path, process_options)`
 
 Processes an input dataset and writes the results to disk. It supports:
