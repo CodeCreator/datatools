@@ -28,6 +28,10 @@ def load_from_hub(path: str):
 
 def load_csv(path: Union[Path, str]):
     from datasets import load_dataset
+    if isinstance(path, Path):
+        # HY: load_dataset expects a string path
+        path = str(path)
+
     if "tsv" in path:
         return load_dataset("csv", data_files=path, delimiter="\t")['train']
     else:
@@ -67,6 +71,9 @@ def load(*input_paths: List[Union[Path, str]], options: Optional[LoadOptions] = 
                 if suffix in [".arrow", ".parquet", ".npy", ".jsonl", ".tsv", ".csv"]:
                     input_type = suffix[1:]
                     break
+        elif not path.exists():
+            # HY: if the path does not exist (not a file or directory), we assume it should be loaded from hub
+            input_type = "hub"
 
     if input_type == "mosaic":
         return LocalDatasets(input_paths)
