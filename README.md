@@ -1,4 +1,4 @@
-# 🛠️ *datatools*: Simple Utilities for Common Data Operations
+## 🛠️ *datatools*: Simple Utilities for Common Data Operations
 
 Scripts and reusable functions for implementing common data operations (tokenization, splitting, subsampling, packing, and more).
 
