@@ -26,6 +26,9 @@ load(path, load_options)
 ```
 Loads the dataset at the path and **automatically infers its format** (e.g., compressed JSON, PyArrow, MDS, etc.) based on clues from the file format and directory structure.
 
+For loading from datasets hosted on the HuggingFace hub, you can use the `hub` input type and specify the path as `path/to/dataset>name#split`. 
+For example, `load("tatsu-lab/alpaca_eval>alpaca_eval#eval")` is equivalent to `datasets.load_dataset("tatsu-lab/alpaca_eval", split="eval")`.
+
 ---
 
 ```python

@@ -26,6 +26,18 @@ def load_from_hub(path: str):
     return load_dataset(path, name=(name[0] if name else None), split=(split[0] if split else None))
 
 
+def load_csv(path: Union[Path, str]):
+    from datasets import load_dataset
+    if isinstance(path, Path):
+        # HY: load_dataset expects a string path
+        path = str(path)
+
+    if "tsv" in path:
+        return load_dataset("csv", data_files=path, delimiter="\t")['train']
+    else:
+        return load_dataset("csv", data_files=path)['train']
+
+
 def load_hf_dataset(path: Union[Path, str], input_type: str):
     from datasets import load_from_disk, Dataset
     path = str(path)
@@ -35,6 +47,8 @@ def load_hf_dataset(path: Union[Path, str], input_type: str):
         "arrow": Dataset.from_file,
         "parquet": Dataset.from_parquet,
         "hub": load_from_hub,
+        "csv": load_csv,
+        "tsv": load_csv,
     }[input_type](path)
 
 
@@ -54,9 +68,12 @@ def load(*input_paths: List[Union[Path, str]], options: Optional[LoadOptions] = 
             # Best guess from file extension
             # Iterate over suffixes in reverse order to handle cases like .jsonl.zst
             for suffix in path.suffixes[::-1]:
-                if suffix in [".arrow", ".parquet", ".npy", ".jsonl"]:
+                if suffix in [".arrow", ".parquet", ".npy", ".jsonl", ".tsv", ".csv"]:
                     input_type = suffix[1:]
                     break
+        elif not path.exists():
+            # HY: if the path does not exist (not a file or directory), we assume it should be loaded from hub
+            input_type = "hub"
 
     if input_type == "mosaic":
         return LocalDatasets(input_paths)
@@ -64,7 +81,7 @@ def load(*input_paths: List[Union[Path, str]], options: Optional[LoadOptions] = 
         return JsonlDataset(input_paths)
     elif input_type == "npy":
         return np.concatenate([np.load(path) for path in input_paths])
-    elif input_type in {"hf", "arrow", "parquet", "hub"}:
+    elif input_type in {"hf", "arrow", "parquet", "hub", "csv", "tsv"}:
         from datasets import concatenate_datasets
         return concatenate_datasets([load_hf_dataset(path, input_type) for path in input_paths])
     else:
