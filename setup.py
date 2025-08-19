@@ -20,7 +20,7 @@ DATASET_DEPS = [
 
 setup(
     name='datatools-py',
-    version='0.1',
+    version='0.2',
     packages=['datatools'],
     install_requires=CORE_DEPS,
     extras_require={
