@@ -15,6 +15,22 @@ Built with special support for [Mosaic Streaming Datasets (MDS)](https://docs.mo
 
 Clone this repo and install via `pip install -e .` or install from PyPI via `pip install datatools-py`.
 
+### Installation Options
+
+- **Core installation** (without Hugging Face datasets support):
+  ```bash
+  pip install datatools-py
+  ```
+
+- **Full installation** (with Hugging Face datasets support):
+  ```bash
+  pip install datatools-py[datasets]
+  # or
+  pip install datatools-py[full]
+  ```
+
+The core installation includes all necessary dependencies for working with MDS (Mosaic Streaming Datasets), JSONL, and NumPy files. The Hugging Face `datasets` library is only required if you need to load HuggingFace datasets, Arrow, or Parquet files.
+
 ## Library
 
 *datatools* provides core libraries that can be used to easily build custom data pipelines, specifically through `from datatools import load, process`.
@@ -24,7 +40,7 @@ Clone this repo and install via `pip install -e .` or install from PyPI via `pip
 ```python
 load(path, load_options)
 ```
-Loads the dataset at the path and **automatically infers its format** (e.g., compressed JSON, PyArrow, MDS, etc.) based on clues from the file format and directory structure.
+Loads the dataset at the path and **automatically infers its format** (e.g., compressed JSON, PyArrow, MDS, etc.) based on clues from the file format and directory structure. It also supports MDS dataset over S3 and compressed MDS files (`.mds.zstd`, `.mds.zst`).
 
 ---
 

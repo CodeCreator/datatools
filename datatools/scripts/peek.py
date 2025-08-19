@@ -1,7 +1,14 @@
 from contextlib import contextmanager
 
-from datasets import Dataset
+try:
+    from datasets import Dataset
+    HAS_DATASETS = True
+except ImportError:
+    HAS_DATASETS = False
+    Dataset = None
+    
 from pathlib import Path
+from upath import UPath
 
 import pprint
 
@@ -10,9 +17,9 @@ import json
 import subprocess
 import sys
 
-from streaming import LocalDataset
+from streaming import LocalDataset, StreamingDataset
 
-from datatools.io_utils import LocalDatasets, DatetimeJsonEncoder
+from datatools.io_utils import LocalDatasets, DatetimeJsonEncoder, RemoteDatasets
 from datatools.load import load, LoadOptions
 
 from simple_parsing import ArgumentParser
@@ -39,22 +46,33 @@ def jq_printer(compact=False):
 
 
 def dataset_summary(dataset):
-    if isinstance(dataset, Dataset):
-        features_dict = dataset._info.features.to_dict()
+    features = "unknown"
+
+    if HAS_DATASETS and isinstance(dataset, Dataset):
         dataset_type = "HuggingfaceDataset"
+        features_dict = dataset._info.features.to_dict()
     elif isinstance(dataset, (LocalDataset, LocalDatasets)):
-        features_dicts = [dict(zip(shard.column_names, shard.column_encodings)) for shard in dataset.shards]
-        assert all(features_dicts[0] == features for features in features_dicts), "All shards must have the same features"
-        features_dict = features_dicts[0]
         dataset_type = "MosaicDataset"
+        features_dicts = [dict(zip(shard.column_names, shard.column_encodings)) for shard in dataset.shards]
+        if not all(features_dicts[0] == features for features in features_dicts):
+            features_dict = None
+            features = "inconsistent"
+        else:
+            features_dict = features_dicts[0]
+    elif isinstance(dataset, RemoteDatasets):
+        dataset_type = "MosaicDataset"
+        features_dicts = [dict(zip(shard.column_names, shard.column_encodings)) for shard in dataset.wrapped.shards]
+        if not all(features_dicts[0] == features for features in features_dicts):
+            features_dict = None
+            features = "inconsistent"
+        else:
+            features_dict = features_dicts[0]
     else:
         features_dict = None
         dataset_type = "UnknownDataset"
 
-    if features_dict is not None:
+    if features_dict is not None and features is not None:
         features = pprint.pformat(features_dict, sort_dicts=False).replace("\n", "\n" + " "*14)
-    else:
-        features = "unknown"
 
     return f"{dataset_type}({{\n    length: {len(dataset)},\n    features: {features}\n}})"
 
@@ -75,7 +93,7 @@ def head(dataset, head):
 def main():
     parser = ArgumentParser()
     parser.add_argument("datasets",
-                        type=Path,
+                        type=UPath,
                         nargs="+",
                         help="Dataset name or path to dataset. If multiple, will be concatenated.")
 

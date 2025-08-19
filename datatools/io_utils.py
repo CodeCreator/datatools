@@ -2,9 +2,10 @@ import json
 import os
 import io
 
-from typing import Any, Dict, Union, List
+from typing import Any, Dict, Union, List, Optional
 from collections.abc import Sequence
 from pathlib import Path
+from upath import UPath
 
 import numpy as np
 from datetime import datetime
@@ -12,6 +13,7 @@ from datetime import datetime
 from streaming.base.array import Array
 from streaming.base.format import get_index_basename, reader_from_json
 from streaming.base.spanner import Spanner
+from streaming import Stream, StreamingDataset
 
 import zstandard
 from contextlib import contextmanager
@@ -65,6 +67,66 @@ class Subset(Array):
 
     def __getitem__(self, idx: int) -> Dict[str, Any]:
         return self.dataset[int(self.indices[int(idx)])]
+
+
+
+def has_compressed_mds_files(path: UPath) -> bool:
+    """Check if a UPath directory contains compressed MDS files (.mds.zstd or .mds.zst)."""
+    if not path.is_dir():
+        return False
+    
+    # Check if index.json exists
+    index_file = path / get_index_basename()
+    if not index_file.exists():
+        return False
+    
+    # Check for compressed MDS files
+    try:
+        for file in path.iterdir():
+            if file.suffix in ['.zstd', '.zst'] and '.mds' in file.name:
+                return True
+    except (OSError, AttributeError):
+        # If we can't iterate (permissions, etc.), return False
+        return False
+    
+    return False
+
+
+def is_remote_path(path: UPath) -> bool:
+    """Check if a UPath is a remote path (S3, GCS, etc.)."""
+    return path.protocol in ('s3', 's3a', 'gs', 'gcs', 'http', 'https')
+
+
+
+class RemoteDatasets(Array):
+    def __init__(self, paths: List[Union[UPath, str]], local_cache_dir: Optional[str] = None):
+        self.paths = paths
+        self.local_cache_dir = local_cache_dir
+        
+        
+        streams = [
+            Stream(
+                remote=str(path), 
+                local=os.path.join(os.path.expanduser('~'), '.cache', 'streaming_datasets', str(hash(path))), 
+                repeat=1.0,
+            )
+            for path in paths
+        ]
+        
+        self.wrapped = StreamingDataset(
+            streams=streams,
+            shuffle=False,
+        )
+
+    def __len__(self) -> int:
+        return len(self.wrapped)
+
+    @property
+    def size(self) -> int:
+        return len(self.wrapped)
+
+    def get_item(self, idx: int) -> Dict[str, Any]:
+        return self.wrapped[idx]
 
 
 class LocalDatasets(Array):

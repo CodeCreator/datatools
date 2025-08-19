@@ -1,19 +1,32 @@
 from setuptools import setup
 
+# Core dependencies (always required)
+CORE_DEPS = [
+    'tqdm>=4.66.1',
+    'numpy>=1.26.4',
+    'simple_parsing>=0.1.5',
+    'mosaicml-streaming>=0.7.5',
+    'sentencepiece>=0.1.99',
+    'zstandard>=0.23.0',
+    'universal-pathlib>=0.2.2',
+    'fsspec[s3]>=2023.1.0',
+    # 'transformers==4.39.3',
+]
+
+# Optional dependencies for dataset support
+DATASET_DEPS = [
+    'datasets>=2.18.0',
+]
+
 setup(
     name='datatools-py',
     version='0.1',
     packages=['datatools'],
-    install_requires=[
-        'tqdm>=4.66.1',
-        'numpy>=1.26.4',
-        'simple_parsing>=0.1.5',
-        'mosaicml-streaming>=0.7.5',
-        'datasets>=2.18.0',
-        'sentencepiece>=0.1.99',
-        'zstandard>=0.23.0'
-        # 'transformers==4.39.3',
-    ],
+    install_requires=CORE_DEPS,
+    extras_require={
+        'datasets': DATASET_DEPS,
+        'full': DATASET_DEPS,  # Alias for datasets
+    },
     author='Alexander Wettig',
     description='Library and scripts for common LM data utilities (tokenizing, splitting, packing, ...)',
     long_description=open('README.md').read(),
